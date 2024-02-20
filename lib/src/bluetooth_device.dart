@@ -52,8 +52,8 @@ class BluetoothDevice {
   ///   - prevents accidentally creating duplicate subscriptions on each reconnection.
   ///   - [next] if true, the the stream will be canceled only on the *next* disconnection.
   ///     This is useful if you setup your subscriptions before you connect.
-  ///   - [delayed] Note: This option is only meant for `connectionState` subscriptions.  
-  ///     When `true`, we cancel after a small delay. This ensures the `connectionState` 
+  ///   - [delayed] Note: This option is only meant for `connectionState` subscriptions.
+  ///     When `true`, we cancel after a small delay. This ensures the `connectionState`
   ///     listener receives the `disconnected` event.
   void cancelWhenDisconnected(StreamSubscription subscription, {bool next = false, bool delayed = false}) {
     if (isConnected == false && next == false) {
@@ -63,7 +63,7 @@ class BluetoothDevice {
       FlutterBluePlus._delayedSubscriptions[remoteId]!.add(subscription);
     } else {
       FlutterBluePlus._deviceSubscriptions[remoteId] ??= [];
-      FlutterBluePlus._deviceSubscriptions[remoteId]!.add(subscription);      
+      FlutterBluePlus._deviceSubscriptions[remoteId]!.add(subscription);
     }
   }
 
@@ -408,7 +408,7 @@ class BluetoothDevice {
       // a race condition that can cause `discoverServices` to timeout or fail.
       //
       // Note: This hack is only needed for devices that automatically send an
-      // MTU update right after connection. If your device does not do that, 
+      // MTU update right after connection. If your device does not do that,
       // you can set this delay to zero. Other people may need to increase it!
       //
       // The race condition goes like this:
@@ -418,7 +418,7 @@ class BluetoothDevice {
       //  4. the user then calls `discoverServices`, thinking that `requestMtu` has finished
       //  5. in reality, `requestMtu` is still happening, and the call to `discoverServices` will fail/timeout
       //
-      // Adding delay before we call `requestMtu` helps ensure 
+      // Adding delay before we call `requestMtu` helps ensure
       // that the automatic mtu update has already happened.
       await Future.delayed(Duration(milliseconds: (predelay * 1000).toInt()));
     }
@@ -554,6 +554,51 @@ class BluetoothDevice {
         // success?
         if (bs.bondState != BmBondStateEnum.bonded) {
           throw FlutterBluePlusException(ErrorPlatform.fbp, "createBond", FbpErrorCode.createBondFailed.hashCode,
+              "Failed to create bond. ${bs.bondState}");
+        }
+      }
+    } finally {
+      mtx.give();
+    }
+  }
+
+  /// Force the bonding popup to show now (Android Only)
+  /// Note! calling this is usually not necessary!! The platform does it automatically.
+  Future<void> justCreateBond({int timeout = 90}) async {
+    // check android
+    if (Platform.isAndroid == false) {
+      throw FlutterBluePlusException(
+          ErrorPlatform.fbp, "justCreateBond", FbpErrorCode.androidOnly.index, "android-only");
+    }
+
+    // Only allow a single ble operation to be underway at a time
+    _Mutex mtx = _MutexFactory.getMutexForKey("global");
+    await mtx.take();
+
+    try {
+      var responseStream = FlutterBluePlus._methodStream.stream
+          .where((m) => m.method == "OnBondStateChanged")
+          .map((m) => m.arguments)
+          .map((args) => BmBondStateResponse.fromMap(args))
+          .where((p) => p.remoteId == remoteId)
+          .where((p) => p.bondState != BmBondStateEnum.bonding);
+
+      // Start listening now, before invokeMethod, to ensure we don't miss the response
+      Future<BmBondStateResponse> futureResponse = responseStream.first;
+
+      // invoke
+      bool changed = await FlutterBluePlus._invokeMethod('justCreateBond', remoteId.str);
+
+      // only wait for 'bonded' if we weren't already bonded
+      if (changed) {
+        BmBondStateResponse bs = await futureResponse
+            .fbpEnsureAdapterIsOn("justCreateBond")
+            .fbpEnsureDeviceIsConnected(this, "justCreateBond")
+            .fbpTimeout(timeout, "justCreateBond");
+
+        // success?
+        if (bs.bondState != BmBondStateEnum.bonded) {
+          throw FlutterBluePlusException(ErrorPlatform.fbp, "justCreateBond", FbpErrorCode.createBondFailed.hashCode,
               "Failed to create bond. ${bs.bondState}");
         }
       }

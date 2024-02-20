@@ -1371,6 +1371,37 @@ public class FlutterBluePlusPlugin implements
                     break;
                 }
 
+                case "justCreateBond":
+                {
+                    String remoteId = (String) call.arguments;
+
+                    BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(remoteId);
+
+                    // already bonded?
+                    if (device.getBondState() == BluetoothDevice.BOND_BONDED) {
+                        log(LogLevel.WARNING, "already bonded");
+                        result.success(false); // no work to do
+                        break;
+                    }
+
+                    // bonding already in progress?
+                    if (device.getBondState() == BluetoothDevice.BOND_BONDING) {
+                        log(LogLevel.WARNING, "bonding already in progress");
+                        result.success(true); // caller must wait for bond completion
+                        break;
+                    }
+
+                    // bond
+                    if(device.createBond() == false) {
+                        result.error("createBond", "device.createBond() returned false", null);
+                        break;
+                    }
+
+                    result.success(true);
+                    break;
+                }
+
+
                 case "removeBond":
                 {
                     String remoteId = (String) call.arguments;

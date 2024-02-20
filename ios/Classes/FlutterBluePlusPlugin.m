@@ -755,6 +755,12 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
                                     message:@"android only"
                                     details:NULL]);
         }
+        else if([@"justCreateBond" isEqualToString:call.method])
+        {
+            result([FlutterError errorWithCode:@"setPreferredPhy" 
+                                    message:@"android only"
+                                    details:NULL]);
+        }
         else if([@"removeBond" isEqualToString:call.method])
         {
             result([FlutterError errorWithCode:@"removeBond" 
