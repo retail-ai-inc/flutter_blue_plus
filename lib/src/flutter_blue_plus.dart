@@ -437,28 +437,36 @@ class FlutterBluePlus {
       var r = BmConnectionStateResponse.fromMap(call.arguments);
       _connectionStates[r.remoteId] = r;
       if (r.connectionState == BmConnectionStateEnum.disconnected) {
+        // push to mtu stream, if needed
+        if (_mtuValues.containsKey(r.remoteId)) {
+          var resp = BmMtuChangedResponse(remoteId: r.remoteId, mtu: 23);
+          _methodStream.add(MethodCall("OnMtuChanged", resp.toMap()));
+        }
+
         // clear mtu
         _mtuValues.remove(r.remoteId);
 
         // clear lastDescs (resets 'isNotifying')
-        _lastDescs.remove(r.remoteId); 
+        _lastDescs.remove(r.remoteId);
 
         // clear lastChrs (api consistency)
-        _lastChrs.remove(r.remoteId); 
+        _lastChrs.remove(r.remoteId);
 
         // cancel & delete subscriptions
-        _deviceSubscriptions[r.remoteId]?.forEach((s) => s.cancel()); 
-        _deviceSubscriptions.remove(r.remoteId); 
+        _deviceSubscriptions[r.remoteId]?.forEach((s) => s.cancel());
+        _deviceSubscriptions.remove(r.remoteId);
 
         // Note: to make FBP easier to use, we do not clear `knownServices`,
-        // otherwise `servicesList` would be more annoying to use. We also 
+        // otherwise `servicesList` would be more annoying to use. We also
         // do not clear `bondState`, for faster performance.
 
         // autoconnect
-        if (_adapterStateNow == BmAdapterStateEnum.on) {
-          var device = BluetoothDevice(remoteId: r.remoteId);
-          if (_autoConnect.contains(device)) {
-            device.connect(autoConnect: true, mtu: null);
+        if (Platform.isAndroid == false) {
+          if (_autoConnect.contains(r.remoteId)) {
+            if (_adapterStateNow == BmAdapterStateEnum.on) {
+              var d = BluetoothDevice(remoteId: r.remoteId);
+              d.connect(autoConnect: true, mtu: null);
+            }
           }
         }
       }

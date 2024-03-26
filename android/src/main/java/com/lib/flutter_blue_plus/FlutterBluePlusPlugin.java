@@ -103,7 +103,7 @@ public class FlutterBluePlusPlugin implements
     private final Map<String, BluetoothGatt> mCurrentlyConnectingDevices = new ConcurrentHashMap<>();
     private final Map<String, BluetoothDevice> mBondingDevices = new ConcurrentHashMap<>();
     private final Map<String, Integer> mMtu = new ConcurrentHashMap<>();
-    private final Map<String, Boolean> mAutoConnected = new ConcurrentHashMap<>();
+    private final Map<String, BluetoothGatt> mAutoConnected = new ConcurrentHashMap<>();
     private final Map<String, String> mWriteChr = new ConcurrentHashMap<>();
     private final Map<String, String> mWriteDesc = new ConcurrentHashMap<>();
     private final Map<String, String> mAdvSeen = new ConcurrentHashMap<>();
@@ -703,7 +703,7 @@ public class FlutterBluePlusPlugin implements
 
                         // remember autoconnect 
                         if (autoConnect) {
-                            mAutoConnected.put(remoteId, autoConnect);
+                            mAutoConnected.put(remoteId, gatt);
                         } else {
                             mAutoConnected.remove(remoteId);
                         }
@@ -727,6 +727,17 @@ public class FlutterBluePlusPlugin implements
                     }
                     if (gatt == null) {
                         gatt = mConnectedDevices.get(remoteId);;
+                    }
+                    if (gatt == null) {
+                        gatt = mAutoConnected.get(remoteId);
+                        if (gatt != null) {
+                            log(LogLevel.DEBUG, "already disconnected. disabling autoconnect");
+                            mAutoConnected.remove(remoteId);
+                            gatt.disconnect();
+                            gatt.close();
+                            result.success(false);  // no work to do
+                            return;
+                        }
                     }
                     if (gatt == null) {
                         log(LogLevel.DEBUG, "already disconnected");
