@@ -547,7 +547,7 @@ class BluetoothDevice {
       // only wait for 'bonded' if we weren't already bonded
       if (changed) {
         BmBondStateResponse bs = await futureResponse
-            // .fbpEnsureAdapterIsOn("createBond")
+            .fbpEnsureAdapterIsOn("createBond")
             .fbpEnsureDeviceIsConnected(this, "createBond")
             .fbpTimeout(timeout, "createBond");
 
@@ -592,7 +592,7 @@ class BluetoothDevice {
       // only wait for 'bonded' if we weren't already bonded
       if (changed) {
         BmBondStateResponse bs = await futureResponse
-            .fbpEnsureAdapterIsOn("justCreateBond")
+            // .fbpEnsureAdapterIsOn("justCreateBond")
             .fbpEnsureDeviceIsConnected(this, "justCreateBond")
             .fbpTimeout(timeout, "justCreateBond");
 
