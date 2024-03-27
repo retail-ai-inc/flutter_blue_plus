@@ -593,7 +593,7 @@ class BluetoothDevice {
       if (changed) {
         BmBondStateResponse bs = await futureResponse
             // .fbpEnsureAdapterIsOn("justCreateBond")
-            .fbpEnsureDeviceIsConnected(this, "justCreateBond")
+            // .fbpEnsureDeviceIsConnected(this, "justCreateBond")
             .fbpTimeout(timeout, "justCreateBond");
 
         // success?
